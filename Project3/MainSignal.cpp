@@ -8,28 +8,31 @@ int main()
 	double  EndTime = 0.1; 
 		double dt = 0.00001; 
 		double Lx = 1.0; 
-	    double Ly = 1.0; 
+	    double Ly = 1.0;
+		double Lz = 0.5; 
 		double miu = 1.5; 
 		double PrdRate = 100; 
-		const int	nx = 51;
-		const int	ny = 51;
-		const int   nz = 2;
+		const int	nx = 101;
+		const int	ny = 101;
+		const int   nz = 51;
 		double growRate = 4;
 		double WingCntrX = 0.5;
 		double WingCntrY = 0.5;
+		double WingCntrZ = 0.05;
 		double SrcWidthRatio = 0.2;
 		
 
 	
-	double cold[nx+1][ny+1];
-	double c[nx+1][ny+1];
-	double cSd[nx + 1][ny + 1];
-	double Prd[nx + 1][ny + 1];
+	double cold[nx+1][ny+1][nz + 1];
+	double c[nx+1][ny+1][nz + 1];
+	double cSd[nx + 1][ny + 1][nz + 1];
+	double Prd[nx + 1][ny + 1][nz + 1];
 	double x[nx+1]; 
 	double y[ny+1]; 
-	double dx, dy; 
+	double z[nz + 1];
+	double dx, dy, dz;
 	double RWing ;
-	double distX; 
+	double distXY; 
 	
 	
 
@@ -37,6 +40,7 @@ int main()
 
 	dx = Lx / (nx - 1); 
 	dy = Ly / (ny - 1);
+	dz = Lz / (nz - 1);
 
 	for (int i = 0; i <= nx+1; i++) {
 		x[i] = 0.5*dx + (i - 1)*dx; 
@@ -46,31 +50,36 @@ int main()
 		y[j] = 0.5*dy + (j - 1)*dy; 
 	}
 
+	for (int k = 0; k <= nz; k++) {
+		z[k] = 0.5*dz + (k - 1)*dz;
+	}
+
 	int CountEnd= EndTime / dt; 
 
 	//initialize
 	for (int i = 0; i <= nx; i++) {
 		for (int j = 0; j <= ny; j++) {
+			for (int k = 0; k <= nz; k++) {
+				cold[i][j][k] = 0;
+				c[i][j][k] = 0;
+				Prd[i][j][k] = 0;
 
-			cold[i][j] = 0;
-			c[i][j] = 0;
-			Prd[i][j] = 0;
+			}
 
 		}
-
 	}
 
 
 	//initialize source at the center
-	int DPPcntr = floor((nx - 1) / 2);
-	for (int j = 0; j <= ny; j++) {
+//	int DPPcntr = floor((nx - 1) / 2);
+//	for (int j = 0; j <= ny; j++) {
 
 	//	cold[DPPcntr][j] = 1.0;
 	//	c[DPPcntr][j] = cold[DPPcntr][j];
-	}
+	//}
 
 
-	RWing = 0.05;
+	RWing = 0.4; //initial size
 
 	int plotCounter; 
 		plotCounter = 0; 
@@ -78,7 +87,7 @@ int main()
 	for (int t = 0; t <= CountEnd; t++) {
 
 
-		RWing = RWing + growRate*dt;
+	//	RWing = RWing + growRate*dt;
 
 		
 
@@ -87,10 +96,11 @@ int main()
 		 // update the values
 		for (int i = 0; i <= nx; i++) {
 			for (int j = 0; j <= ny; j++) {
+				for (int k = 0; k <= nz; k++) {
+					cold[i][j][k] = c[i][j][k];
+				}
 
-				cold[i][j] = c[i][j];
 			}
-
 		}
 
 		cout << "Time is" << t *dt << endl;
@@ -101,73 +111,97 @@ int main()
 		double dist;
 		for (int i = 0; i <= nx; i++) {
 			for (int j = 0; j <= ny; j++) {
+				for (int k = 0; k <= nz; k++) {
+					dist = sqrt( (x[i] - WingCntrX)*(x[i] - WingCntrX) + 
+								 (y[j] - WingCntrY)*(y[j] - WingCntrY) +
+						         (z[k] - WingCntrZ)*(z[k] - WingCntrZ)
+						       );
 
-				dist = sqrt((x[i] - WingCntrX)*(x[i] - WingCntrX) + (y[j] - WingCntrY)*(y[j] - WingCntrY));
+					if (dist < RWing && (z[k]- WingCntrZ)>=0.33*RWing) {
 
-				if (dist < RWing) {
+						cSd[i][j][k] = 1;
+					}
+					else {
+						cSd[i][j][k] = 0;
+					}
 
-					cSd[i][j] = 1;
-				}
-				else {
-					cSd[i][j] = 0;
 				}
 
 			}
-
 		}
 		
 		for (int i = 0; i <= nx; i++) {
 			for (int j = 0; j <= ny; j++) {
+				for (int k = 0; k <= nz; k++) {
 
-				if (cSd[i][j] == 1) {
+					if (cSd[i][j][k] == 1) {
 
-					distX = sqrt((x[i] - WingCntrX)*(x[i] - WingCntrX));
-						//	cold[DPPcntr][j] = 1.0;
-						if (distX / RWing < SrcWidthRatio) {
+						distXY = sqrt( (x[i] - WingCntrX)*(x[i] - WingCntrX) + 
+							           (y[j] - WingCntrY)*(y[j] - WingCntrY) 
+							         ); 
+							//	cold[DPPcntr][j] = 1.0;
+							if (distXY / RWing < SrcWidthRatio) {
 
-							Prd[i][j] = PrdRate;
-						}
-						else {
-							Prd[i][j] = 0;
-						}
-				}
+								Prd[i][j][k] = PrdRate;
+							}
+							else {
+								Prd[i][j][k] = 0;
+							}
+					}
 
 
 					else {
-						Prd[i][j] = 0;
+						Prd[i][j][k] = 0;
 					}
 				}
 			}
+		}
 		
 
 
-		for (int i = 1; i <= nx-1; i++) {
-			for (int j = 1; j <= ny-1; j++) {
+		for (int i = 1; i <= nx - 1; i++) {
+			for (int j = 1; j <= ny - 1; j++) {
+				for (int k = 1; k <= nz - 1; k++) {
 
-				c[i][j] = cold[i][j] + dt*Prd[i][j]+ dt*miu*(  (cold[i + 1][j] - 2 * cold[i][j] + cold[i - 1][j]) / (dx*dx) +
-					                                           (cold[i][j + 1] - 2 * cold[i][j] + cold[i][j - 1]) / (dy*dy) +
+					c[i][j][k] = cold[i][j][k] + dt*Prd[i][j][k] + dt*miu*((cold[i + 1][j][k] - 2 * cold[i][j][k] + cold[i - 1][j][k]) / (dx*dx) +
+						(cold[i][j + 1][k] - 2 * cold[i][j][k] + cold[i][j - 1][k]) / (dy*dy) +
+						(cold[i][j][k + 1] - 2 * cold[i][j][k] + cold[i][j][k - 1]) / (dz*dz)
 
-					                      );
+						);
+
+				}
+
 
 			}
-
-
 		}
 
 		// treating boundary cells 
-		for (int i = 1; i <= nx - 1; i++) {
-			c[i][0] = c[i][1]; 
-			c[i][ny] = c[i][ny-1]; 
-		}
+			for (int i = 1; i <= nx - 1; i++) {
+				for (int j = 1; j <= ny - 1; j++) {
+					c[i][j][0] = c[i][j][1];
+					c[i][j][nz] = c[i][j][nz - 1];
+				}
+			}
 
-		for (int j = 0; j <= ny; j++) {
-			c[0][j] = c[1][j];
-			c[nx][j] = c[nx-1][j];
-		}
+			for (int i = 1; i <= nx - 1; i++) {
+				for (int k = 0; k <= nz; k++) {
+					c[i][0][k] = c[i][1][k];
+					c[i][ny][k] = c[i][ny-1][k];
+				}
+			}
+
+
+
+			for (int j = 0; j <= ny; j++) {
+				for (int k = 0; k <= nz; k++) {
+					c[0][j][k] = c[1][j][k];
+					c[nx][j][k] = c[nx - 1][j][k];
+				}
+			}
 
 		//z is just for output purpose
-		double z[2]; 
-		z[1] = 1;
+		//double z[2]; 
+		//z[1] = 1;
 
 		
 
@@ -178,7 +212,7 @@ int main()
 
 			std::string vtkFileName = "DPP_" + std::to_string(t) + ".vtk";
 			ofstream SignalOut;
-			SignalOut.open(vtkFileName.c_str());
+			SignalOut.open(OUTPUT/vtkFileName.c_str());
 			SignalOut << "# vtk DataFile Version 2.0" << endl;
 			SignalOut << "Result for paraview 2d code" << endl;
 			SignalOut << "ASCII" << endl;
@@ -217,7 +251,7 @@ int main()
 			for (int k = 1; k <= nz - 1; k++) {
 				for (int j = 1; j <= ny - 1; j++) {
 					for (int i = 1; i <= nx - 1; i++) {
-						SignalOut << c[i][j]* cSd[i][j] << endl;
+						SignalOut << c[i][j][k]* cSd[i][j][k] << endl;
 
 					}
 				}
@@ -229,7 +263,12 @@ int main()
 			for (int k = 1; k <= nz - 1; k++) {
 				for (int j = 1; j <= ny - 1; j++) {
 					for (int i = 1; i <= nx - 1; i++) {
-						SignalOut << cSd[i][j] << endl;
+						SignalOut << cSd[i][j][k] << endl;
+
+					//	if (cSd[i][j][k] == 1)
+					//	{
+					//		cout << "C is equal to 1" << endl;
+					//	}
 
 					}
 				}
